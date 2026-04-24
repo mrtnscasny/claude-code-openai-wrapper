@@ -219,6 +219,10 @@ class ChatCompletionResponse(BaseModel):
     choices: List[Choice]
     usage: Optional[Usage] = None
     system_fingerprint: Optional[str] = None
+    claude_tool_calls: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Raw tool calls attempted by Claude (not present if no tools were called)",
+    )
 
 
 class StreamChoice(BaseModel):

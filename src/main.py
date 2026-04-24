@@ -428,8 +428,8 @@ async def generate_streaming_response(
 
         # Handle tools - disabled by default for OpenAI compatibility
         if not request.enable_tools:
-            # Disable all tools by using CLAUDE_TOOLS constant
-            claude_options["disallowed_tools"] = CLAUDE_TOOLS
+            # Allow nothing — empty list is stricter than listing tools to disallow
+            claude_options["allowed_tools"] = []
             claude_options["max_turns"] = 1  # Single turn for Q&A
             logger.info("Tools disabled (default behavior for OpenAI compatibility)")
         else:
@@ -452,6 +452,8 @@ async def generate_streaming_response(
             allowed_tools=claude_options.get("allowed_tools"),
             disallowed_tools=claude_options.get("disallowed_tools"),
             permission_mode=claude_options.get("permission_mode"),
+            effort=claude_options.get("effort"),
+            disable_thinking=claude_options.get("disable_thinking", False),
             stream=True,
         ):
             chunks_buffer.append(chunk)
@@ -690,8 +692,8 @@ async def chat_completions(
 
             # Handle tools - disabled by default for OpenAI compatibility
             if not request_body.enable_tools:
-                # Disable all tools by using CLAUDE_TOOLS constant
-                claude_options["disallowed_tools"] = CLAUDE_TOOLS
+                # Allow nothing — empty list is stricter than listing tools to disallow
+                claude_options["allowed_tools"] = []
                 claude_options["max_turns"] = 1  # Single turn for Q&A
                 logger.info("Tools disabled (default behavior for OpenAI compatibility)")
             else:
@@ -711,15 +713,28 @@ async def chat_completions(
                 allowed_tools=claude_options.get("allowed_tools"),
                 disallowed_tools=claude_options.get("disallowed_tools"),
                 permission_mode=claude_options.get("permission_mode"),
+                effort=claude_options.get("effort"),
+                disable_thinking=claude_options.get("disable_thinking", False),
                 stream=False,
             ):
                 chunks.append(chunk)
+
+            # Check for SDK errors before extracting message
+            for chunk in chunks:
+                if chunk.get("is_error"):
+                    error_msg = chunk.get("error_message", "Unknown Claude Agent SDK error")
+                    logger.error(f"Claude Agent SDK error: {error_msg}")
+                    raise HTTPException(status_code=500, detail=error_msg)
 
             # Extract assistant message
             raw_assistant_content = claude_cli.parse_claude_message(chunks)
 
             if not raw_assistant_content:
+                logger.error(f"No response extracted from chunks: {chunks}")
                 raise HTTPException(status_code=500, detail="No response from Claude Code")
+
+            # Extract tool calls before filtering (structured data from SDK chunks)
+            tool_calls = MessageAdapter.extract_tool_calls(chunks)
 
             # Filter out tool usage and thinking blocks
             assistant_content = MessageAdapter.filter_content(raw_assistant_content)
@@ -749,6 +764,7 @@ async def chat_completions(
                     completion_tokens=completion_tokens,
                     total_tokens=prompt_tokens + completion_tokens,
                 ),
+                claude_tool_calls=tool_calls,
             )
 
             return response
@@ -823,10 +839,18 @@ async def anthropic_messages(
         ):
             chunks.append(chunk)
 
+        # Check for SDK errors before extracting message
+        for chunk in chunks:
+            if chunk.get("is_error"):
+                error_msg = chunk.get("error_message", "Unknown Claude Agent SDK error")
+                logger.error(f"Claude Agent SDK error: {error_msg}")
+                raise HTTPException(status_code=500, detail=error_msg)
+
         # Extract assistant message
         raw_assistant_content = claude_cli.parse_claude_message(chunks)
 
         if not raw_assistant_content:
+            logger.error(f"No response extracted from chunks: {chunks}")
             raise HTTPException(status_code=500, detail="No response from Claude Code")
 
         # Filter out tool usage and thinking blocks

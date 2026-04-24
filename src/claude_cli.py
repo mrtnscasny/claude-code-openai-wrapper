@@ -104,6 +104,8 @@ class ClaudeCodeCLI:
         session_id: Optional[str] = None,
         continue_session: bool = False,
         permission_mode: Optional[str] = None,
+        effort: Optional[str] = None,
+        disable_thinking: bool = False,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Run Claude Agent using the Python SDK and yield response chunks."""
 
@@ -132,14 +134,23 @@ class ClaudeCodeCLI:
                     options.system_prompt = {"type": "preset", "preset": "claude_code"}
 
                 # Set tool restrictions
-                if allowed_tools:
+                if allowed_tools is not None:
                     options.allowed_tools = allowed_tools
-                if disallowed_tools:
+                if disallowed_tools is not None:
                     options.disallowed_tools = disallowed_tools
 
                 # Set permission mode (needed for tool execution in API context)
                 if permission_mode:
                     options.permission_mode = permission_mode
+
+                # Set effort level (low/medium/high/max)
+                if effort:
+                    options.effort = effort
+
+                # Disable extended thinking explicitly
+                if disable_thinking:
+                    from claude_agent_sdk.types import ThinkingConfigDisabled
+                    options.thinking = ThinkingConfigDisabled(type="disabled")
 
                 # Handle session continuity
                 if continue_session:

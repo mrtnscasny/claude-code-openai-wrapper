@@ -139,6 +139,18 @@ class ParameterValidator:
                     f"Invalid X-Claude-Max-Thinking-Tokens header: {headers['x-claude-max-thinking-tokens']}"
                 )
 
+        # Extract effort level (low/medium/high/max)
+        if "x-claude-effort" in headers:
+            effort_val = headers["x-claude-effort"].lower()
+            if effort_val in ("low", "medium", "high", "max"):
+                claude_options["effort"] = effort_val
+            else:
+                logger.warning(f"Invalid X-Claude-Effort header: {headers['x-claude-effort']} (must be low/medium/high/max)")
+
+        # Disable extended thinking explicitly
+        if headers.get("x-claude-disable-thinking", "").lower() in ("1", "true", "yes"):
+            claude_options["disable_thinking"] = True
+
         return claude_options
 
 

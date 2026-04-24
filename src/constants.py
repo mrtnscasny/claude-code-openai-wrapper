@@ -45,6 +45,11 @@ CLAUDE_TOOLS = [
     "KillShell",  # Kill bash shells
     "Skill",  # Execute skills
     "SlashCommand",  # Execute slash commands
+    # Interactive/plan mode tools — must be disallowed in headless API mode
+    "EnterPlanMode",
+    "ExitPlanMode",
+    "AskUserQuestion",
+    "TaskOutput",
 ]
 
 # Default tools to allow when tools are enabled
@@ -69,9 +74,12 @@ DEFAULT_DISALLOWED_TOOLS = [
 # Models supported by Claude Agent SDK (as of November 2025)
 # NOTE: Claude Agent SDK only supports Claude 4+ models, not Claude 3.x
 CLAUDE_MODELS = [
-    # Claude 4.5 Family (Latest - Fall 2025) - RECOMMENDED
-    "claude-opus-4-5-20250929",  # Latest Opus 4.5 - Most capable
-    "claude-sonnet-4-5-20250929",  # Recommended - best coding model
+    # Claude 4.6 Family (Latest)
+    "claude-sonnet-4-6",
+    "claude-opus-4-6",
+    # Claude 4.5 Family (Fall 2025)
+    "claude-opus-4-5-20250929",
+    "claude-sonnet-4-5-20250929",
     "claude-haiku-4-5-20251001",  # Fast & cheap
     # Claude 4.1
     "claude-opus-4-1-20250805",  # Upgraded Opus 4

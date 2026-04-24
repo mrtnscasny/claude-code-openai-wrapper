@@ -64,6 +64,8 @@ class MessageAdapter:
         else:
             # Remove other tool usage blocks (when tools are disabled but Claude tries to use them)
             tool_patterns = [
+                r"<function_calls>.*?</function_calls>",  # MCP/Claude Code tool call blocks
+                r"<invoke\b.*?</invoke>",                 # Individual invoke blocks
                 r"<read_file>.*?</read_file>",
                 r"<write_file>.*?</write_file>",
                 r"<bash>.*?</bash>",
@@ -109,6 +111,33 @@ class MessageAdapter:
             "finish_reason": finish_reason,
             "model": model,
         }
+
+    @staticmethod
+    def extract_tool_calls(chunks: list) -> Optional[list]:
+        """
+        Extract tool call data from SDK chunks as structured dicts.
+        Returns None if no tool calls were made.
+        """
+        tool_calls = []
+        for chunk in chunks:
+            content = chunk.get("content") if isinstance(chunk, dict) else None
+            if not content or not isinstance(content, list):
+                continue
+            for block in content:
+                # ToolUseBlock from the SDK
+                if hasattr(block, "id") and hasattr(block, "name") and hasattr(block, "input"):
+                    tool_calls.append({
+                        "id": block.id,
+                        "name": block.name,
+                        "input": block.input,
+                    })
+                elif isinstance(block, dict) and block.get("type") == "tool_use":
+                    tool_calls.append({
+                        "id": block.get("id"),
+                        "name": block.get("name"),
+                        "input": block.get("input", {}),
+                    })
+        return tool_calls if tool_calls else None
 
     @staticmethod
     def estimate_tokens(text: str) -> int:
